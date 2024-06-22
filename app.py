@@ -55,9 +55,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-F", "--file", help="local excel file")
     args = parser.parse_args()
-    # file = args.file
+    file = args.file
 
-    file = r"C:\Users\iii\Desktop\бомжет\май_2024_Илья.xlsx"
+
     month = os.path.basename(file).split('_')[0].lower()
     print(month)
 
