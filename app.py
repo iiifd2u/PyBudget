@@ -93,4 +93,6 @@ if __name__ == '__main__':
     print(sport_price.sum())
 
 
+
+
 # print(df1.loc['Сумма в валюте учета'])
