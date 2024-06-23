@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from typing import List
+from typing import List, Union, Optional
 import argparse
 
 pd.set_option('display.max_columns', None)
@@ -20,32 +20,35 @@ days_dict = {"январь": 31,
              "декабрь": 31}
 
 
-def create_df_from_excel(xl: pd.ExcelFile, sheet: str, columns_to_rename: List[str]):
+def create_df_from_excel(xl: pd.ExcelFile, sheet: str, columns_to_rename: Optional[List[str]]):
     # iloc - для индексов [колонки, столбцы]
     df1 = xl.parse(sheet)
-    old_keys = list(df1.keys())
-    new_keys = list(df1.iloc[0, :])
 
-    columns = {o: n for o, n in zip(old_keys, new_keys)}
-    data1 = df1.iloc[1:, :].rename(columns=columns)
+    if columns_to_rename is not None:
+        old_keys = list(df1.keys())
+        new_keys = list(df1.iloc[0, :])
 
-    data1[columns_to_rename[0]] = data1[columns_to_rename[0]].astype("int64")
-    data1[columns_to_rename[1]] = data1[columns_to_rename[1]].astype("int64")
+        columns = {o: n for o, n in zip(old_keys, new_keys)}
+        data1 = df1.iloc[1:, :].rename(columns=columns)
+        for column in columns_to_rename:
+            data1[column] = data1[column].astype("int64")
 
-    return data1
+        return data1
+    else:
+        return df1
 
 
-def write_to_excel(df: pd.DataFrame, path: str, startrow:int):
+def write_to_excel(df: pd.DataFrame, path: str, startrow:int, startcol:int):
 
     indices = ['Кафе', 'Продукты', 'Транспорт',
                'Спорт', 'Туризм', 'Аптека',
                'Сумма по еде в месяц', 'Итог по еде в день',
                'Сумма всего', 'В день', 'Доход', 'Разница']
 
-    writer = pd.ExcelWriter(os.path.join("output_file", "record_2024.xlsx"), engine='xlsxwriter')
+    writer = pd.ExcelWriter(path, engine='xlsxwriter')
 
     # Convert the dataframe to an XlsxWriter Excel object.
-    df.to_excel(writer, sheet_name='Отчётность', startcol=1, startrow=startrow)
+    df.to_excel(writer, sheet_name='Отчётность', startcol=startcol, startrow=startrow)
 
     # Close the Pandas Excel writer and output the Excel file.
     writer.close()
@@ -67,11 +70,11 @@ if __name__ == '__main__':
 
     df_income = create_df_from_excel(xl, sheets[0],
                                      columns_to_rename=["Сумма в валюте учета", "Сумма в валюте счета"])  # ДОХОДЫ
-    print(df_income)
+    # print(df_income)
 
     df_expenses = create_df_from_excel(xl, sheets[1],
                                        columns_to_rename=["Сумма в валюте учета", "Сумма в валюте счета"])  # РАСХОДЫ
-    print(df_expenses)
+    # print(df_expenses)
 
     df_remittance = create_df_from_excel(xl, sheets[2],
                                          columns_to_rename=["Сумма в исходящей валюте счета",
@@ -120,8 +123,41 @@ if __name__ == '__main__':
               all_food_month, all_food_per_day, all_price-remittance_price,
               all_price_per_day, all_income, all_income - all_price]
 
-    df_RPM = pd.DataFrame(data=prices, index=indices, columns=[month])
-    print(df_RPM)
+    # df_RPM = pd.DataFrame(data=prices, index=indices, columns=[month])
+    # print(pd.Series(index=indices, data=prices))
+
+    out_path = os.path.join("output_file", "records_2024.xlsx")
+
+    xl = pd.ExcelFile(out_path)
+    sheets = xl.sheet_names
+    df_RPM = create_df_from_excel(xl, sheet=sheets[0], columns_to_rename=None).iloc[2:, 1:]
+    months = df_RPM.iloc[0, :].tolist()
+    print(months)
+    print("------------")
+    columns = {o: n for o, n in zip(list(df_RPM.keys()), months)}
+    index = {o+1: n for o, n in zip(list(df_RPM.index), indices)}
+    print(index)
+    # exit()
+    df_RPM = df_RPM.iloc[1:, :].rename(columns=columns, index = index)
+
+    print("From excel:", df_RPM)
+
+    if month in months:
+        key = months.index(month)
+        df_RPM[month] = df_RPM[month] + pd.Series(index=indices, data=prices)
+        # write_to_excel(df_RPM, out_path, startrow = 10, startcol = key)
+    else:
+        key = len(months)
+        print("from 2")
+        print(key)
+        # df_RPM[month] = pd.Series(index=indices, data=prices)
+        # write_to_excel(df_RPM, out_path, startrow=3, startcol=key)
+
+    print("To excel:", df_RPM)
+
+
+
+
 
 
 
