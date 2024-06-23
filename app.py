@@ -38,23 +38,25 @@ def create_df_from_excel(xl: pd.ExcelFile, sheet: str, columns_to_rename: Option
         return df1
 
 
-def write_to_excel(df: pd.DataFrame, path: str, startrow:int, startcol:int):
+def write_to_excel(df: pd.DataFrame, path: str, startrow:int, startcol:int, need_index = False):
 
     indices = ['Кафе', 'Продукты', 'Транспорт',
                'Спорт', 'Туризм', 'Аптека',
                'Сумма по еде в месяц', 'Итог по еде в день',
                'Сумма всего', 'В день', 'Доход', 'Разница']
 
-    writer = pd.ExcelWriter(path, engine='xlsxwriter')
+    writer = pd.ExcelWriter(path, engine='openpyxl',if_sheet_exists="overlay", mode="a")
 
     # Convert the dataframe to an XlsxWriter Excel object.
-    df.to_excel(writer, sheet_name='Отчётность', startcol=startcol, startrow=startrow)
+    df.to_excel(writer, sheet_name='Отчётность', startcol=startcol, startrow=startrow, index=need_index)
 
     # Close the Pandas Excel writer and output the Excel file.
     writer.close()
 
 
 if __name__ == '__main__':
+
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-F", "--file", help="local excel file")
     args = parser.parse_args()
@@ -123,37 +125,42 @@ if __name__ == '__main__':
               all_food_month, all_food_per_day, all_price-remittance_price,
               all_price_per_day, all_income, all_income - all_price]
 
-    # df_RPM = pd.DataFrame(data=prices, index=indices, columns=[month])
-    # print(pd.Series(index=indices, data=prices))
-
-    out_path = os.path.join("output_file", "records_2024.xlsx")
+    # куда сохранять
+    out_path = os.path.join(r"C:\Users\iii\Desktop\бомжет", "records_2024.xlsx")
 
     xl = pd.ExcelFile(out_path)
-    sheets = xl.sheet_names
-    df_RPM = create_df_from_excel(xl, sheet=sheets[0], columns_to_rename=None).iloc[2:, 1:]
-    months = df_RPM.iloc[0, :].tolist()
-    print(months)
-    print("------------")
-    columns = {o: n for o, n in zip(list(df_RPM.keys()), months)}
-    index = {o+1: n for o, n in zip(list(df_RPM.index), indices)}
-    print(index)
-    # exit()
-    df_RPM = df_RPM.iloc[1:, :].rename(columns=columns, index = index)
+    sheets = xl.sheet_names # имена листов
+    df_RPM = create_df_from_excel(xl, sheet=sheets[0], columns_to_rename=None)
 
-    print("From excel:", df_RPM)
+    if len(df_RPM.keys())>0:
+        # Если уже что-то было записано, то берём данные без отступа и без названия
+        df_RPM = df_RPM.iloc[2:, 1:]
+        # Месяцы  = первая строка
+        months = df_RPM.iloc[0, :].tolist()
+        columns = {o: n for o, n in zip(list(df_RPM.keys()), months)}
+        index = {o+1: n for o, n in zip(list(df_RPM.index), indices)}
 
-    if month in months:
-        key = months.index(month)
-        df_RPM[month] = df_RPM[month] + pd.Series(index=indices, data=prices)
-        # write_to_excel(df_RPM, out_path, startrow = 10, startcol = key)
+        # назначаем правильные названия строк и колонок
+        df_RPM = df_RPM.iloc[1:, :].rename(columns=columns, index = index)
+
+        # если такой месяц уже есть
+        if month in months:
+            key = months.index(month)+1
+            df_RPM[month] = df_RPM[month] + pd.Series(index=indices, data=prices)
+            # пишем следующий столбец без ключей
+            write_to_excel(df_RPM[month], out_path, startrow = 3, startcol = key)
+        else:
+            key = len(months)+1
+            df_RPM[month] = pd.Series(index=indices, data=prices)
+            # пишем следующий столбец без ключей
+            write_to_excel(df_RPM[month], out_path, startrow = 3, startcol=key)
     else:
-        key = len(months)
-        print("from 2")
-        print(key)
-        # df_RPM[month] = pd.Series(index=indices, data=prices)
-        # write_to_excel(df_RPM, out_path, startrow=3, startcol=key)
-
+        # Если новый файл
+        df_RPM = pd.DataFrame(data=prices, index=indices, columns=[month])
+        # пишем в ексель с индексами
+        write_to_excel(df_RPM, out_path, startrow=3, startcol=0, need_index=True)
     print("To excel:", df_RPM)
+
 
 
 
