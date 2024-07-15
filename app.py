@@ -101,6 +101,9 @@ if __name__ == '__main__':
 
     # Внутренние переводы
     remittance_price = df_remittance.loc[:, "Сумма в исходящей валюте счета"].sum()
+
+    print("ПЕРЕВОДЫ = ", remittance_price)
+
     # Вся сумма:
     all_price = df_expenses.loc[:, "Сумма в валюте учета"].sum()
 
